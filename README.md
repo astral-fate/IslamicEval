@@ -81,3 +81,5 @@ The paper presented a successful system for identifying religious texts in LLM o
 
 - https://github.com/islamAndAi/QURAN-NLP
 - https://huggingface.co/Ellbendls/Qwen3-4b-Quran-LoRA-Fine-Tuned
+- https://github.com/qcri/IslamicEval-2025-Subtask-1/tree/main
+- https://sites.google.com/view/islamiceval-2025
