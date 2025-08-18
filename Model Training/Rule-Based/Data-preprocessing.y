@@ -1,12 +1,3 @@
-#
-# SCRIPT 1: preprocessing.py (MAXIMUM COMPATIBILITY VERSION)
-#
-# Purpose: Load raw Quran and Hadith data, strategically split long Ayahs,
-#          aggressively clean all texts, create normalized (Tashkeel-removed) copies
-#          of Ayahs for data augmentation, add explicit quotes, and save the final
-#          tokenized datasets to disk.
-#
-
 import json
 import pandas as pd
 from datasets import Dataset
@@ -25,9 +16,9 @@ QURAN_JSON_PATH = "/content/drive/MyDrive/FinalIslamic/data/quran.json"
 SIX_HADITH_BOOKS_JSON_PATH = "/content/drive/MyDrive/FinalIslamic/data/six_hadith_books.json"
 
 # Output paths for processed data
-PREPROCESSED_TRAIN_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_train_dataset"
-PREPROCESSED_VAL_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_val_dataset"
-CSV_OUTPUT_DIR = "/content/drive/MyDrive/FinalIslamic/preprocessed_csv/"
+PREPROCESSED_TRAIN_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_train_full"
+PREPROCESSED_VAL_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_val_full"
+CSV_OUTPUT_DIR = "/content/drive/MyDrive/FinalIslamic/preprocessed_csv_10k_full/"
 
 
 # --- NEW HELPER FUNCTION ---
@@ -144,6 +135,8 @@ def create_validation_examples(tokenizer, label_to_id, val_ayah_texts, val_hadit
     val_hadith_suffixes = ["", "من السنة النبوية", "حديث نبوي شريف", "من هدي المصطفى", "صلى الله عليه وسلم", "(رواه الترمذي)"]
     val_transitions = ["ولنتأمل معاً", "وفي هذا السياق", "وللتوضيح", "وإليكم المثال", "وفي هذا الصدد", "وهذا يبين لنا أهمية الموضوع."]
 
+    
+    
     validation_data = []
     validation_csv_data = []
 
@@ -185,44 +178,134 @@ def main_preprocessing():
     with open(SIX_HADITH_BOOKS_JSON_PATH, 'r', encoding='utf-8') as f:
         six_books_data = json.load(f)
 
-    ayah_texts = [item['ayah_text'] for item in quran_data if 'ayah_text' in item]
-    hadith_texts = [item['Matn'].strip() for item in six_books_data if 'Matn' in item and item['Matn'] and item['Matn'].strip()]
+    original_ayah_texts = [item['ayah_text'] for item in quran_data if 'ayah_text' in item]
+    original_hadith_texts = [item['Matn'].strip() for item in six_books_data if 'Matn' in item and item['Matn'] and item['Matn'].strip()]
 
-    # Step 1: Split long texts
-    ayah_texts = split_long_texts(ayah_texts, tokenizer, max_tokens=25, label_type="Ayah")
+    # --- Process the *entire* dataset first (splitting long texts and normalizing) ---
+    print("🔄 Processing entire dataset (splitting long texts and normalizing)...")
 
-    # --- NEW: NORMALIZE AND AUGMENT AYAH DATA ---
-    print("🔄 Normalizing Ayah texts for data augmentation...")
-    # Create a new list containing Ayahs with Tashkeel removed
-    normalized_ayah_texts = [normalize_arabic(text) for text in tqdm(ayah_texts, desc="Normalizing")]
+    # Step 1: Split long texts for the entire dataset
+    processed_ayah_texts = split_long_texts(original_ayah_texts, tokenizer, max_tokens=25, label_type="Ayah")
+    processed_hadith_texts = split_long_texts(original_hadith_texts, tokenizer, max_tokens=25, label_type="Hadith")
 
-    # Combine the original (with Tashkeel) and normalized (without Tashkeel) lists
-    original_count = len(ayah_texts)
-    ayah_texts.extend(normalized_ayah_texts)
-    print(f"✅ Normalization complete. Ayah count increased from {original_count} to {len(ayah_texts)}.")
-    # --- END OF NEW LOGIC ---
+    # Step 2: Normalize Ayah texts for data augmentation
+    print("🔄 Normalizing processed Ayah texts for data augmentation...")
+    normalized_processed_ayah_texts = [normalize_arabic(text) for text in tqdm(processed_ayah_texts, desc="Normalizing")]
+    processed_ayah_texts.extend(normalized_processed_ayah_texts)
+    print(f"✅ Normalization complete. Processed Ayah count increased to {len(processed_ayah_texts)}.")
 
+    # Step 3: Filter out very long texts from the processed set
     MAX_TEXT_LENGTH = 1500
-    ayah_texts = [t for t in ayah_texts if len(t) < MAX_TEXT_LENGTH]
-    hadith_texts = [t for t in hadith_texts if len(t) < MAX_TEXT_LENGTH]
-    print(f"Filtered: {len(ayah_texts)} Ayahs, {len(hadith_texts)} Hadiths")
+    processed_ayah_texts = [t for t in processed_ayah_texts if len(t) < MAX_TEXT_LENGTH]
+    processed_hadith_texts = [t for t in processed_hadith_texts if len(t) < MAX_TEXT_LENGTH]
+    print(f"Filtered processed texts (length < {MAX_TEXT_LENGTH}): {len(processed_ayah_texts)} Ayahs, {len(processed_hadith_texts)} Hadiths")
+
 
     random.seed(42)
-    all_texts = [(text, 'Ayah') for text in ayah_texts] + [(text, 'Hadith') for text in hadith_texts]
-    val_subset_size = min(int(len(all_texts) * 0.20), 3333)
-    val_texts_subset = random.sample(all_texts, val_subset_size)
-    val_ayah_texts = [text for text, label in val_texts_subset if label == 'Ayah']
-    val_hadith_texts = [text for text, label in val_texts_subset if label == 'Hadith']
 
-    train_ayah_texts = ayah_texts
-    train_hadith_texts = hadith_texts
+    # --- Sample validation set from the processed data (balanced 10% Ayah, 10% Hadith) ---
+    val_ayah_size = int(len(processed_ayah_texts) * 0.10)
+    val_hadith_size = int(len(processed_hadith_texts) * 0.10)
 
-    quran_train_prefixes = ["", "قال الله تعالى:", "وقال الله عز وجل:", "كما ورد في القرآن الكريم:", "وفي كتاب الله:", "ومن آيات الله:", "يقول سبحانه وتعالى:", "وفي هذا الشأن يقول الله:"]
-    quran_train_suffixes = ["", "صدق الله العظيم", "آية كريمة", "من القرآن الكريم", "كلام الله عز وجل", "من الذكر الحكيم", "(سورة البقرة، الآية 255)", "وهذا بيان للناس"]
-    hadith_train_prefixes = ["", "قال رسول الله صلى الله عليه وسلم:", "وقال النبي صلى الله عليه وسلم:", "عن النبي صلى الله عليه وسلم:", "روى أن النبي صلى الله عليه وسلم قال:", "وفي الحديث الشريف:", "وعن أبي هريرة رضي الله عنه قال:"]
-    hadith_train_suffixes = ["", "رواه البخاري", "رواه مسلم", "حديث صحيح", "صلى الله عليه وسلم", "من السنة النبوية", "(متفق عليه)", "أو كما قال صلى الله عليه وسلم"]
-    neutral_sentences = ["وبناء على ذلك، يمكننا أن نستنتج.", "وهذا يوضح عظمة التشريع.", "وفي هذا هداية للمؤمنين.", "إن في ذلك لآيات لقوم يعقلون.", "وهذا هو القول الراجح."]
+    val_ayah_texts = random.sample(processed_ayah_texts, val_ayah_size)
+    val_hadith_texts = random.sample(processed_hadith_texts, val_hadith_size)
 
+    print(f"Sampled {len(val_ayah_texts)} processed Ayahs and {len(val_hadith_texts)} processed Hadiths for validation.")
+
+    # --- Use remaining processed data for training ---
+    train_ayah_texts = [text for text in processed_ayah_texts if text not in val_ayah_texts]
+    train_hadith_texts = [text for text in processed_hadith_texts if text not in val_hadith_texts]
+
+    print(f"Using {len(train_ayah_texts)} processed Ayahs and {len(train_hadith_texts)} processed Hadiths for training.")
+
+
+    quran_train_prefixes = [
+        "",
+        "ومن النصوص القرآنية:",
+        "وجاء في المصحف الشريف:",
+        "ومن آيات الذكر الحكيم:",
+        "وفي التنزيل الحكيم:",
+        "ومما أنزل على محمد:",
+        "وفي الوحي المبين:",
+        "ومن كلام رب العالمين:",
+        "وفي السور الكريمة:",
+        "ومن المحكم والمتشابه:",
+        "وبين الآيات البينات:",
+        "ومن التشريع الإلهي:",
+        "وفي النص المقدس:",
+        "ومن الحق المنزل:"
+    ]
+
+    quran_train_suffixes = [
+        "",
+        "من الآيات المحكمات",
+        "وهو الحق المبين",
+        "من كتاب الله المجيد",
+        "والالله أعلم بما أنزل",
+        "وفي ذلك هدى للمتقين",
+        "من النور المبين",
+        "وذلك من فضل الله",
+        "من الحكمة الإلهية",
+        "وهو القول الفصل",
+        "من البيان الواضح",
+        "وفيه شفاء للنفوس",
+        "من الهدى والنور",
+        "والله على كل شيء قدير"
+    ]
+
+    hadith_train_prefixes = [
+        "",
+        "ومن الأحاديث النبوية:",
+        "وفي السنة المطهرة:",
+        "ومن كلام المصطفى:",
+        "وجاء في الأثر:",
+        "ومن هدي النبي الكريم:",
+        "وفي التوجيه النبوي:",
+        "ومن تعليم الرسول:",
+        "وفي الإرشاد المحمدي:",
+        "ومن البيان النبوي:",
+        "وفي التربية الإسلامية:",
+        "ومن الحكمة النبوية:",
+        "وفي المنهج المحمدي:",
+        "ومما علم النبي أمته:",
+        "وفي التوضيح الشريف:"
+    ]
+
+    hadith_train_suffixes = [
+        "",
+        "من التوجيه النبوي",
+        "وهو من الهدي الشريف",
+        "من المنهج الإسلامي",
+        "والله ورسوله أعلم",
+        "من التربية النبوية",
+        "وفيه الحكمة البالغة",
+        "من السنة المباركة",
+        "وذلك من كمال الدين",
+        "من التعليم المحمدي",
+        "وهو من الإرشاد الحكيم",
+        "من الأخلاق الفاضلة",
+        "وفي ذلك قدوة حسنة",
+        "من المبادئ الإسلامية",
+        "والحمد لله رب العالمين"
+    ]
+
+    neutral_sentences = [
+        "ومن خلال هذا النص يتضح لنا.",
+        "وهذا ما يؤكد على أهمية الموضوع.",
+        "ويمكن الاستفادة من هذا في حياتنا.",
+        "وهذا يدل على عمق التشريع.",
+        "ومن هنا نفهم الحكمة الإلهية.",
+        "وفي هذا السياق يجب أن نتأمل.",
+        "وهذا المعنى يحتاج إلى تدبر.",
+        "ومن هذا المنطلق نستطيع القول.",
+        "وبناء على ما سبق نخلص إلى.",
+        "وفي ضوء هذا الفهم يمكننا.",
+        "وهذا يقودنا إلى نتيجة مهمة.",
+        "ومن خلال التأمل في هذا النص.",
+        "وهذا الأمر يستدعي منا الانتباه.",
+        "وبهذا المفهوم نصل إلى الهدف.",
+        "ومن هذه الزاوية ننظر للمسألة."
+    ]
 
     print("🔄 Preprocessing training examples...")
     train_examples = []
@@ -254,6 +337,7 @@ def main_preprocessing():
     print(f"✅ Generated {len(train_examples)} training examples")
     print(f"❌ Failed to create {failed_examples} examples")
 
+    # Use the sampled validation texts with custom validation templates
     validation_examples, validation_csv_data = create_validation_examples(tokenizer, label_to_id, val_ayah_texts, val_hadith_texts)
 
     print("💾 Saving preprocessing details to CSV files...")
