@@ -200,17 +200,18 @@ def main_preprocessing():
     processed_hadith_texts = [t for t in processed_hadith_texts if len(t) < MAX_TEXT_LENGTH]
     print(f"Filtered processed texts (length < {MAX_TEXT_LENGTH}): {len(processed_ayah_texts)} Ayahs, {len(processed_hadith_texts)} Hadiths")
 
-
     random.seed(42)
 
-    # --- Sample validation set from the processed data (balanced 10% Ayah, 10% Hadith) ---
-    val_ayah_size = int(len(processed_ayah_texts) * 0.10)
-    val_hadith_size = int(len(processed_hadith_texts) * 0.10)
+    # --- MODIFIED: Create balanced validation set ---
+    # Take the minimum of the two corpora sizes to ensure balance
+    min_corpus_size = min(len(processed_ayah_texts), len(processed_hadith_texts))
+    balanced_val_size = int(min_corpus_size * 0.10)  # 10% of the smaller corpus
+    
+    # Sample equal amounts from both corpora for validation
+    val_ayah_texts = random.sample(processed_ayah_texts, balanced_val_size)
+    val_hadith_texts = random.sample(processed_hadith_texts, balanced_val_size)
 
-    val_ayah_texts = random.sample(processed_ayah_texts, val_ayah_size)
-    val_hadith_texts = random.sample(processed_hadith_texts, val_hadith_size)
-
-    print(f"Sampled {len(val_ayah_texts)} processed Ayahs and {len(val_hadith_texts)} processed Hadiths for validation.")
+    print(f"Sampled {len(val_ayah_texts)} processed Ayahs and {len(val_hadith_texts)} processed Hadiths for validation (balanced).")
 
     # --- Use remaining processed data for training ---
     train_ayah_texts = [text for text in processed_ayah_texts if text not in val_ayah_texts]
