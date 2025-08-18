@@ -39,6 +39,7 @@ def split_long_texts(texts, tokenizer, max_tokens=25, label_type="Ayah"):
     split_count = 0
     for text in tqdm(texts, desc=f"Processing {label_type}s"):
         tokens = tokenizer.tokenize(text)
+    
         if len(tokens) <= max_tokens:
             split_texts.append(text)
         else:
@@ -47,6 +48,7 @@ def split_long_texts(texts, tokenizer, max_tokens=25, label_type="Ayah"):
             if split_pos == -1:
                 split_pos = mid_point
 
+       
             part1 = text[:split_pos].strip()
             part2 = text[split_pos:].strip()
 
@@ -68,6 +70,7 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
         prefix = random.choice(prefixes)
         suffix = random.choice(suffixes)
 
+       
         if random.random() > 0.3:
             context = random.choice(neutral_sentences)
             if random.random() > 0.5:
@@ -75,6 +78,7 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
             else:
                 full_text = f'{prefix} "{cleaned_text}" {context} {suffix}'
         else:
+     
             full_text = f'{prefix} "{cleaned_text}" {suffix}'
 
         full_text = re.sub(r'\s+', ' ', full_text).strip()
@@ -85,6 +89,7 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
 
         tokenized_input = tokenizer(full_text, truncation=True, max_length=512)
         input_ids = tokenized_input['input_ids']
+        
         attention_mask = tokenized_input['attention_mask']
         labels = [label_to_id['O']] * len(input_ids)
 
@@ -94,6 +99,7 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
         if start_token is not None and end_token is not None:
             labels[start_token] = label_to_id[f'B-{label_type}']
             for i in range(start_token + 1, min(end_token + 1, len(labels))):
+            
                 labels[i] = label_to_id[f'I-{label_type}']
 
         word_ids = tokenized_input.word_ids()
@@ -102,6 +108,7 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
             if word_id is None or (i > 0 and word_id == word_ids[i - 1]):
                 final_labels.append(-100)
             else:
+         
                 final_labels.append(labels[i] if i < len(labels) else label_to_id['O'])
 
         result = {
@@ -112,12 +119,14 @@ def _create_example_fixed(text, label_type, tokenizer, label_to_id, prefixes, su
 
         if save_details:
             result.update({
+         
                 "original_text": text,
                 "full_text": full_text,
                 "prefix": prefix,
                 "suffix": suffix,
                 "char_start": char_start,
                 "char_end": char_end,
+       
                 "label_type": label_type,
                 "target_span": cleaned_text
             })
@@ -133,6 +142,7 @@ def create_validation_examples(tokenizer, label_to_id, val_ayah_texts, val_hadit
     val_ayah_suffixes = ["", "هذا من كلام الله", "آية عظيمة", "من القرآن الكريم", "كلام رب العالمين", "من الذكر الحكيم", "آية كريمة", "(صدق الله العظيم)"]
     val_hadith_prefixes = ["", "وفي السنة النبوية:", "ومن هدي النبي صلى الله عليه وسلم:", "وقد علمنا الرسول صلى الله عليه وسلم:", "وفي الحديث الشريف نجد:", "كما جاء في الحديث:"]
     val_hadith_suffixes = ["", "من السنة النبوية", "حديث نبوي شريف", "من هدي المصطفى", "صلى الله عليه وسلم", "(رواه الترمذي)"]
+ 
     val_transitions = ["ولنتأمل معاً", "وفي هذا السياق", "وللتوضيح", "وإليكم المثال", "وفي هذا الصدد", "وهذا يبين لنا أهمية الموضوع."]
 
     
@@ -144,17 +154,20 @@ def create_validation_examples(tokenizer, label_to_id, val_ayah_texts, val_hadit
         for variation_num in range(3):
             example = _create_example_fixed(ayah, 'Ayah', tokenizer, label_to_id, val_ayah_prefixes, val_ayah_suffixes, val_transitions, save_details=True)
             if example:
+      
                 validation_data.append({k: v for k, v in example.items() if k in ["input_ids", "attention_mask", "labels"]})
                 details = {k: v for k, v in example.items() if k not in ["input_ids", "attention_mask", "labels"]}
                 details.update({"variation_number": variation_num + 1, "dataset_split": "validation"})
                 validation_csv_data.append(details)
 
     for hadith in tqdm(val_hadith_texts, desc="Val Hadiths"):
+ 
         for variation_num in range(3):
             example = _create_example_fixed(hadith, 'Hadith', tokenizer, label_to_id, val_hadith_prefixes, val_hadith_suffixes, val_transitions, save_details=True)
             if example:
                 validation_data.append({k: v for k, v in example.items() if k in ["input_ids", "attention_mask", "labels"]})
-                details = {k: v for k, v in example.items() if k not in ["input_ids", "attention_mask", "labels"]}
+                details = {k: v for k, v in example.items() if k not 
+ in ["input_ids", "attention_mask", "labels"]}
                 details.update({"variation_number": variation_num + 1, "dataset_split": "validation"})
                 validation_csv_data.append(details)
 
@@ -202,22 +215,25 @@ def main_preprocessing():
 
     random.seed(42)
 
-    # --- MODIFIED: Create balanced validation set ---
-    # Take the minimum of the two corpora sizes to ensure balance
+    # --- MODIFIED: Use all data for training and create a BALANCED validation set ---
+    print("Using 100% of data for training and creating a balanced validation sample.")
+
+    # Use all processed texts for the training set
+    train_ayah_texts = processed_ayah_texts
+    train_hadith_texts = processed_hadith_texts
+
+    # To create a balanced validation set, find the size of the smaller corpus
     min_corpus_size = min(len(processed_ayah_texts), len(processed_hadith_texts))
-    balanced_val_size = int(min_corpus_size * 0.10)  # 10% of the smaller corpus
     
-    # Sample equal amounts from both corpora for validation
+    # Use 10% of the smaller corpus size to ensure an equal number of samples
+    balanced_val_size = int(min_corpus_size * 0.10)
+
+    # Sample an equal amount from both full corpora for validation
     val_ayah_texts = random.sample(processed_ayah_texts, balanced_val_size)
     val_hadith_texts = random.sample(processed_hadith_texts, balanced_val_size)
 
-    print(f"Sampled {len(val_ayah_texts)} processed Ayahs and {len(val_hadith_texts)} processed Hadiths for validation (balanced).")
-
-    # --- Use remaining processed data for training ---
-    train_ayah_texts = [text for text in processed_ayah_texts if text not in val_ayah_texts]
-    train_hadith_texts = [text for text in processed_hadith_texts if text not in val_hadith_texts]
-
-    print(f"Using {len(train_ayah_texts)} processed Ayahs and {len(train_hadith_texts)} processed Hadiths for training.")
+    print(f"Sampled {len(val_ayah_texts)} Ayahs and {len(val_hadith_texts)} Hadiths for a balanced validation set.")
+    print(f"Using {len(train_ayah_texts)} Ayahs and {len(train_hadith_texts)} Hadiths for training.")
 
 
     quran_train_prefixes = [
@@ -242,7 +258,7 @@ def main_preprocessing():
         "من الآيات المحكمات",
         "وهو الحق المبين",
         "من كتاب الله المجيد",
-        "والالله أعلم بما أنزل",
+        "والله أعلم بما أنزل",
         "وفي ذلك هدى للمتقين",
         "من النور المبين",
         "وذلك من فضل الله",
@@ -331,6 +347,7 @@ def main_preprocessing():
                 train_examples.append({k: v for k, v in example.items() if k in ["input_ids", "attention_mask", "labels"]})
                 details = {k: v for k, v in example.items() if k not in ["input_ids", "attention_mask", "labels"]}
                 details.update({"variation_number": variation + 1, "dataset_split": "training"})
+                
                 hadith_csv_data.append(details)
             else:
                 failed_examples += 1
@@ -344,7 +361,8 @@ def main_preprocessing():
     print("💾 Saving preprocessing details to CSV files...")
     pd.DataFrame(ayah_csv_data).to_csv(os.path.join(CSV_OUTPUT_DIR, "ayah_training_details.csv"), index=False, encoding='utf-8')
     pd.DataFrame(hadith_csv_data).to_csv(os.path.join(CSV_OUTPUT_DIR, "hadith_training_details.csv"), index=False, encoding='utf-8')
-    pd.DataFrame(validation_csv_data).to_csv(os.path.join(CSV_OUTPUT_DIR, "validation_details.csv"), index=False, encoding='utf-8')
+    pd.DataFrame(validation_csv_data).to_csv(os.path.join(CSV_OUTPUT_DIR, "validation_details.csv"), 
+ index=False, encoding='utf-8')
     print("✅ CSV files saved.")
 
     print("💾 Saving final tokenized datasets...")
@@ -358,6 +376,7 @@ def main_preprocessing():
         {"dataset": "Training_Ayah", "total_examples": len(ayah_csv_data), "unique_texts": len(train_ayah_texts)},
         {"dataset": "Training_Hadith", "total_examples": len(hadith_csv_data), "unique_texts": len(train_hadith_texts)},
         {"dataset": "Validation_Combined", "total_examples": len(validation_csv_data), "unique_texts": len(val_ayah_texts) + len(val_hadith_texts)},
+       
         {"dataset": "TOTAL", "total_examples": len(train_examples) + len(validation_examples), "failed_examples": failed_examples}
     ]
     summary_df = pd.DataFrame(summary_data)
