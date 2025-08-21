@@ -1,9 +1,8 @@
 # Rule-Based error analysis
 
-================================================================================
-📊 ANALYSIS 1: CHARACTER-LEVEL PERFORMANCE
-================================================================================
-
+ 
+# 📊 ANALYSIS 1: CHARACTER-LEVEL PERFORMANCE
+ ```
 📈 Character-Level Classification Report:
 
               precision    recall  f1-score   support
@@ -19,17 +18,17 @@ weighted avg     0.7965    0.8121    0.7959     65310
 
 📈 Character-Level Confusion Matrix:
 
-
-================================================================================
-📝 ANALYSIS 2: SPAN-LEVEL ERROR LOGGING (FP/FN)
-================================================================================
+```
+ 
+# 📝 ANALYSIS 2: SPAN-LEVEL ERROR LOGGING (FP/FN)
+ 
  <img width="666" height="547" alt="download" src="https://github.com/user-attachments/assets/ae38f0dc-3f0b-4cbe-bc63-d41a239cdffd" />
 <img width="1004" height="624" alt="download" src="https://github.com/user-attachments/assets/afc457dd-0619-4f93-9769-fe02e8adad27" />
 
-================================================================================
-📏 ANALYSIS 3: PERFORMANCE BY SPAN LENGTH
-================================================================================
-
+ 
+# 📏 ANALYSIS 3: PERFORMANCE BY SPAN LENGTH
+ 
+```
 📈 Descriptive Statistics for Span Lengths:
   - True Positives:
     - Count: 78
@@ -43,9 +42,6 @@ weighted avg     0.7965    0.8121    0.7959     65310
     - Count: 101
     - Mean: 104.78, Median: 70.00
     - Min: 6, Max: 690
-
-📈 Boxplot of Span Lengths by Category:
-
-
-
-🎉 Analysis complete!
+ 
+```
+ 
