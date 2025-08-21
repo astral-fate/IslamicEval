@@ -1,11 +1,3 @@
-#
-# SCRIPT 1: preprocessing.py (BALANCED VALIDATION VERSION)
-#
-# Purpose: Load raw Quran and Hadith data, strategically split long Ayahs,
-#          aggressively clean all texts, create normalized (Tashkeel-removed) copies
-#          of Ayahs for data augmentation, add explicit quotes, and save the final
-#          tokenized datasets to disk with BALANCED 50-50 validation split (~10K examples).
-#
 
 import json
 import pandas as pd
@@ -25,9 +17,9 @@ QURAN_JSON_PATH = "/content/drive/MyDrive/FinalIslamic/data/quran.json"
 SIX_HADITH_BOOKS_JSON_PATH = "/content/drive/MyDrive/FinalIslamic/data/six_hadith_books.json"
 
 # Output paths for processed data
-PREPROCESSED_TRAIN_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_train_10k_dataset"
-PREPROCESSED_VAL_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_val_10k_dataset"
-CSV_OUTPUT_DIR = "/content/drive/MyDrive/FinalIslamic/preprocessed_csv_10k/"
+PREPROCESSED_TRAIN_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_train_30p_dataset"
+PREPROCESSED_VAL_PATH = "/content/drive/MyDrive/FinalIslamic/prepros/preprocessed_val_30p_dataset"
+CSV_OUTPUT_DIR = "/content/drive/MyDrive/FinalIslamic/preprocessed_csv_30p/"
 
 
 # --- NEW HELPER FUNCTION ---
@@ -171,7 +163,7 @@ def create_validation_examples(tokenizer, label_to_id, val_ayah_texts, val_hadit
 
 def main_preprocessing():
     """Main function to run the entire preprocessing pipeline."""
-    print("🔄 STEP 1: OFFLINE PREPROCESSING WITH BALANCED VALIDATION (10K)")
+    print("🔄 STEP 1: OFFLINE PREPROCESSING WITH 30% BALANCED VALIDATION")
     print("=" * 60)
 
     os.makedirs(CSV_OUTPUT_DIR, exist_ok=True)
@@ -207,29 +199,36 @@ def main_preprocessing():
     hadith_texts = [t for t in hadith_texts if len(t) < MAX_TEXT_LENGTH]
     print(f"Filtered: {len(ayah_texts)} Ayahs, {len(hadith_texts)} Hadiths")
 
-    # --- MODIFIED: BALANCED VALIDATION SPLIT (10K EXAMPLES) ---
+    # --- MODIFIED: 30% BALANCED VALIDATION SPLIT ---
     random.seed(42)
 
-    # Calculate balanced validation size (50-50 split, targeting ~10K examples)
-    total_val_size = 3334  # Even number for perfect 50-50 split (3334 texts × 3 = ~10K examples)
-    val_size_per_class = total_val_size // 2  # 1667 texts per class
+    # Calculate validation size based on 30% of the total unique texts
+    total_texts = len(ayah_texts) + len(hadith_texts)
+    total_val_size = int(total_texts * 0.30)
+    # Ensure the total size is an even number for a perfect 50/50 split
+    if total_val_size % 2 != 0:
+        total_val_size += 1
+    val_size_per_class = total_val_size // 2
 
-    print(f"🎯 Creating BALANCED validation split (10K examples):")
-    print(f"   - Target validation size: {total_val_size} texts ({val_size_per_class} per class)")
-    print(f"   - Target validation examples: {total_val_size * 3} examples ({val_size_per_class * 3} per class)")
-    print(f"   - Available Ayah texts: {len(ayah_texts)}")
-    print(f"   - Available Hadith texts: {len(hadith_texts)}")
+    print(f"🎯 Creating 30% BALANCED validation split:")
+    print(f"   - Total available texts: {total_texts:,}")
+    print(f"   - Target validation size (30%): {total_val_size:,} texts ({val_size_per_class} per class)")
+    print(f"   - Target validation examples (x3): {total_val_size * 3:,} examples")
+    print(f"   - Available Ayah texts: {len(ayah_texts):,}")
+    print(f"   - Available Hadith texts: {len(hadith_texts):,}")
 
     # Ensure we have enough texts in each class
     if len(ayah_texts) < val_size_per_class:
-        print(f"❌ ERROR: Not enough Ayah texts! Need {val_size_per_class}, have {len(ayah_texts)}")
-        val_size_per_class = len(ayah_texts) // 2  # Reduce validation size
+        print(f"❌ WARNING: Not enough Ayah texts for a balanced 30% split!")
+        print(f"   - Need {val_size_per_class}, have {len(ayah_texts)}. Adjusting validation size.")
+        val_size_per_class = len(ayah_texts)
         total_val_size = val_size_per_class * 2
         print(f"   - Reduced validation size to: {total_val_size} texts ({val_size_per_class} per class)")
 
     if len(hadith_texts) < val_size_per_class:
-        print(f"❌ ERROR: Not enough Hadith texts! Need {val_size_per_class}, have {len(hadith_texts)}")
-        val_size_per_class = min(val_size_per_class, len(hadith_texts) // 2)
+        print(f"❌ WARNING: Not enough Hadith texts for a balanced 30% split!")
+        print(f"   - Need {val_size_per_class}, have {len(hadith_texts)}. Adjusting validation size.")
+        val_size_per_class = min(val_size_per_class, len(hadith_texts))
         total_val_size = val_size_per_class * 2
         print(f"   - Reduced validation size to: {total_val_size} texts ({val_size_per_class} per class)")
 
@@ -237,7 +236,7 @@ def main_preprocessing():
     val_ayah_texts = random.sample(ayah_texts, val_size_per_class)
     val_hadith_texts = random.sample(hadith_texts, val_size_per_class)
 
-    print(f"✅ Balanced validation split created (10K examples):")
+    print(f"✅ 30% balanced validation split created:")
     print(f"   - Validation Ayah texts: {len(val_ayah_texts):,}")
     print(f"   - Validation Hadith texts: {len(val_hadith_texts):,}")
     print(f"   - Total validation texts: {len(val_ayah_texts) + len(val_hadith_texts):,}")
@@ -251,13 +250,13 @@ def main_preprocessing():
     train_hadith_texts = [text for text in hadith_texts if text not in val_hadith_set]
 
     print(f"📊 Training data after removing validation:")
-    print(f"   - Training Ayah texts: {len(train_ayah_texts)}")
-    print(f"   - Training Hadith texts: {len(train_hadith_texts)}")
-    print(f"   - Training examples (3x): {(len(train_ayah_texts) + len(train_hadith_texts)) * 3}")
+    print(f"   - Training Ayah texts: {len(train_ayah_texts):,}")
+    print(f"   - Training Hadith texts: {len(train_hadith_texts):,}")
+    print(f"   - Training examples (3x): {(len(train_ayah_texts) + len(train_hadith_texts)) * 3:,}")
     # --- END OF MODIFIED VALIDATION SPLIT ---
 
     quran_train_prefixes = ["", "قال الله تعالى:", "وقال الله عز وجل:", "كما ورد في القرآن الكريم:", "وفي كتاب الله:", "ومن آيات الله:", "يقول سبحانه وتعالى:", "وفي هذا الشأن يقول الله:"]
-    quran_train_suffixes = ["", "صدق الله العظيم", "آية كريمة", "من القرآن الكريم", "كلام الله عز وجل", "من الذكر الحكيم", "(سورة البقرة، الآية 255)", "وهذا بيان للناس"]
+    quran_train_suffixes = ["", "صدق الله العظيم", "آية كريمة", "من القرآن الكريم", "كلام الله عز وجل", "من الذكر الحكيم", "ولذلك عبرة للمعتبرين", "وهذا بيان للناس"]
     hadith_train_prefixes = ["", "قال رسول الله صلى الله عليه وسلم:", "وقال النبي صلى الله عليه وسلم:", "عن النبي صلى الله عليه وسلم:", "روى أن النبي صلى الله عليه وسلم قال:", "وفي الحديث الشريف:", "وعن أبي هريرة رضي الله عنه قال:"]
     hadith_train_suffixes = ["", "رواه البخاري", "رواه مسلم", "حديث صحيح", "صلى الله عليه وسلم", "من السنة النبوية", "(متفق عليه)", "أو كما قال صلى الله عليه وسلم"]
     neutral_sentences = ["وبناء على ذلك، يمكننا أن نستنتج.", "وهذا يوضح عظمة التشريع.", "وفي هذا هداية للمؤمنين.", "إن في ذلك لآيات لقوم يعقلون.", "وهذا هو القول الراجح."]
@@ -317,75 +316,18 @@ def main_preprocessing():
         {"dataset": "TOTAL", "total_examples": len(train_examples) + len(validation_examples), "failed_examples": failed_examples}
     ]
     summary_df = pd.DataFrame(summary_data)
-    summary_path = os.path.join(CSV_OUTPUT_DIR, "preprocessing_summary_balanced.csv")
+    summary_path = os.path.join(CSV_OUTPUT_DIR, "preprocessing_summary_balanced_30p.csv")
     summary_df.to_csv(summary_path, index=False)
     print(f"✅ Preprocessing summary saved to: {summary_path}")
 
     # Print final balanced statistics
-    print("\n🎉 LARGE BALANCED PREPROCESSING COMPLETE!")
+    print("\n🎉 30% BALANCED PREPROCESSING COMPLETE!")
     print("📊 FINAL DATASET STATISTICS:")
     print(f"   Training:   {len(train_ayah_texts):,} Ayahs + {len(train_hadith_texts):,} Hadiths = {len(train_examples):,} examples")
     print(f"   Validation: {len(val_ayah_texts):,} Ayahs + {len(val_hadith_texts):,} Hadiths = {len(validation_examples):,} examples")
     print(f"   Validation balance: {len(val_ayah_texts)/(len(val_ayah_texts)+len(val_hadith_texts))*100:.1f}% Ayah, {len(val_hadith_texts)/(len(val_ayah_texts)+len(val_hadith_texts))*100:.1f}% Hadith")
-    print(f"   🎯 Large validation set: ~{len(validation_examples)/1000:.0f}K examples for robust evaluation!")
+    print(f"   🎯 Validation set is ~{round((len(val_ayah_texts) + len(val_hadith_texts)) / total_texts * 100)}% of the total unique texts.")
 
 
 if __name__ == "__main__":
     main_preprocessing()
-
-
-
-```
-
-
-🔄 STEP 1: OFFLINE PREPROCESSING WITH BALANCED VALIDATION (10K)
-============================================================
-Loading raw data...
-🔪 Splitting Ayah texts longer than 25 tokens...
-Processing Ayahs: 100%|██████████| 6236/6236 [00:00<00:00, 8236.34it/s]
-✅ Splitting complete. Original: 6236 texts, New total: 6910 texts. (674 texts were split).
-🔄 Normalizing Ayah texts for data augmentation...
-Normalizing: 100%|██████████| 6910/6910 [00:00<00:00, 89103.61it/s]
-✅ Normalization complete. Ayah count increased from 6910 to 13820.
-Filtered: 13820 Ayahs, 31317 Hadiths
-🎯 Creating BALANCED validation split (10K examples):
-   - Target validation size: 3334 texts (1667 per class)
-   - Target validation examples: 10002 examples (5001 per class)
-   - Available Ayah texts: 13820
-   - Available Hadith texts: 31317
-✅ Balanced validation split created (10K examples):
-   - Validation Ayah texts: 1,667
-   - Validation Hadith texts: 1,667
-   - Total validation texts: 3,334
-   - Validation examples (3x): 10,002
-📊 Training data after removing validation:
-   - Training Ayah texts: 12015
-   - Training Hadith texts: 29540
-   - Training examples (3x): 124665
-🔄 Preprocessing training examples...
-Training Ayahs: 100%|██████████| 12015/12015 [00:08<00:00, 1427.06it/s]
-Training Hadiths: 100%|██████████| 29540/29540 [00:37<00:00, 787.61it/s]
-✅ Generated 124665 training examples
-❌ Failed to create 0 examples
-🔄 Creating generalization-focused validation examples...
-Val Ayahs: 100%|██████████| 1667/1667 [00:01<00:00, 1471.95it/s]
-Val Hadiths: 100%|██████████| 1667/1667 [00:02<00:00, 797.42it/s]
-✅ Created 10002 validation examples.
-💾 Saving preprocessing details to CSV files...
-✅ CSV files saved.
-💾 Saving final tokenized datasets...
-Saving the dataset (1/1 shards): 100%
- 124665/124665 [00:00<00:00, 472261.81 examples/s]
-Saving the dataset (1/1 shards): 100%
- 10002/10002 [00:00<00:00, 294298.92 examples/s]
-✅ Datasets saved to /content/drive/MyDrive/FinalIslamic/prepros/preprocessed_train_10k_dataset and /content/drive/MyDrive/FinalIslamic/prepros/preprocessed_val_10k_dataset
-✅ Preprocessing summary saved to: /content/drive/MyDrive/FinalIslamic/preprocessed_csv_10k/preprocessing_summary_balanced.csv
-
-🎉 LARGE BALANCED PREPROCESSING COMPLETE!
-📊 FINAL DATASET STATISTICS:
-   Training:   12,015 Ayahs + 29,540 Hadiths = 124,665 examples
-   Validation: 1,667 Ayahs + 1,667 Hadiths = 10,002 examples
-   Validation balance: 50.0% Ayah, 50.0% Hadith
-   🎯 Large validation set: ~10K examples for robust evaluation!
-
-```
