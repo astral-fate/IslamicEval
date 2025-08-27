@@ -74,13 +74,13 @@ The project implements and compares three approaches:
 - Employs curated Arabic prefixes and suffixes
 - Includes text normalization and augmentation
 
-### 2. Database Lookup (Baseline)
+### 2. Database Lookup (Ablation study)
 - **F1 Score**: 34.80% (test) / 41.76% (dev)
 - Enhanced knowledge base with normalization
 - Overlapping text segmentation
 - Direct string matching approach
 
-### 3. Basic Fine-tuning (Baseline)
+### 3. Basic Fine-tuning (Ablation study)
 - **F1 Score**: 44.70% (test) / 53.71% (dev)
 - Standard fine-tuning without synthetic augmentation
 - Limited training data diversity
@@ -95,13 +95,13 @@ isnad-ai/
 │   │   ├── Fine-tuning.py
 │   │   ├── Evaluate_finetuned.py
 │   │   └── EDA.py
-│   ├── Arabert/             # Alternative AraBERT implementation
+│   ├── Arabert/             # Ablation study: AraBERT fine-tuning
 │   │   ├── Fine-tuning.py
 │   │   └── Evalaute_Arabert.py
-│   ├── Look-up/             # Database lookup baseline
+│   ├── Look-up/             # Ablation study: Database lookup
 │   │   ├── look-up method.py
 │   │   └── EDA.py
-│   └── GPT2/                # Generative augmentation experiments
+│   └── GPT2/                # Ablation study: Generative augmentation experiments
 │       └── syntahtic-data.py
 └── README.md
 ```
