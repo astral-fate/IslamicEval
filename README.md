@@ -12,6 +12,7 @@ This repository contains the official fine-tuned model for the **Isnad AI** syst
 #### *Cairo University* 
 
 
+[![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow)](https://huggingface.co/collections/FatimahEmadEldin/)
 [![Dataset](https://img.shields.io/badge/🤗%20Dataset-Hugging%20Face-blue)](https://huggingface.co/datasets/FatimahEmadEldin/Isnad-AI-Identifying-Islamic-Citation)
 [![Colab](https://img.shields.io/badge/Open%20in-Google%20Colab-orange?logo=google-colab)](https://colab.research.google.com/drive/12uHze_8apJ41_oLe6QJbAjZLYqtp_g3q?usp=sharing)
 [![Paper](https://img.shields.io/badge/📄%20Paper-arXiv-red)](https://arxiv.org/abs/your-paper-link)
