@@ -120,11 +120,11 @@ isnad-ai/
 
 ## Key Results
 
-| Method | Dev F1 | Test F1 | Improvement |
-|--------|--------|---------|-------------|
-| Rule-Based Model | 65.08% | 66.97% | - |
-| Basic Fine-tuning | 53.71% | 44.70% | +22.27% |
-| Database Lookup | 41.76% | 34.80% | +32.17% |
+| Method | Dev F1 | Test F1 | 
+|--------|--------|---------|
+| Rule-Based Model | 65.08% | 66.97% |
+| Basic Fine-tuning | 53.71% | 44.70% | 
+| Database Lookup | 41.76% | 34.80% | 
 
 ### Performance Analysis
 
@@ -146,9 +146,20 @@ isnad-ai/
 - Template-based contextual generation
 - Balanced 70/30 train/validation split
 
+
 ## Evaluation Metrics
 
 The system uses **Macro-Averaged F1 Score** computed at the character level:
+
+$\text{Precision} = \frac{TP}{TP + FP}$
+
+$\text{Recall} = \frac{TP}{TP + FN}$
+
+$F1 = 2 \cdot \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}$
+
+$\text{Macro-F1} = \frac{F1_{\text{Ayah}} + F1_{\text{Hadith}} + F1_{\text{Neither}}}{3}$
+
+
 
 ```
 Precision = TP / (TP + FP)
