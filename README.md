@@ -40,8 +40,8 @@ After preprocessing and augmentation:
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/isnad-ai.git
-cd isnad-ai
+git clone https://github.com/astral-fate/IslamicEval/
+cd IslamicEval
 pip install -r requirements.txt
 ```
 
