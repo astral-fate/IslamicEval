@@ -161,12 +161,7 @@ $\text{Macro-F1} = \frac{F1_{\text{Ayah}} + F1_{\text{Hadith}} + F1_{\text{Neith
 
 
 
-```
-Precision = TP / (TP + FP)
-Recall = TP / (TP + FN)
-F1 = 2 × (Precision × Recall) / (Precision + Recall)
-Macro-F1 = (F1_Ayah + F1_Hadith + F1_Neither) / 3
-```
+ 
 
 ## Limitations and Future Work
 
